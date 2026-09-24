@@ -112,7 +112,59 @@ tbody tr:hover td{background:var(--brand-50)}
 #tip{position:fixed;z-index:50;pointer-events:none;background:var(--brand-900);color:#fff;border-top:3px solid var(--gold);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;max-width:300px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 #tip b{display:block;margin-bottom:2px}
 @media (prefers-reduced-motion:no-preference){ .br i{transition:width .35s ease} }
-@media (max-width:560px){ .kpi .val{font-size:24px} }
+/* Orden en pantallas pequeñas (la tabla pasa a tarjetas) */
+.msort{display:none}
+.pb{display:flex;gap:6px}
+
+/* Tabletas y teléfonos: la tabla se muestra como tarjetas */
+@media (max-width:900px){
+  .filters{position:static}
+  .top{grid-template-columns:1fr}
+  .top .kpi{grid-template-columns:auto 1fr;align-items:center;column-gap:16px}
+  .top .kpi h3{grid-column:1/-1}
+  .top .kpi .val{grid-row:span 2}
+  .top .kpi .btn{grid-column:1/-1}
+  .msort{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+  .msort{flex-wrap:nowrap}
+  .msort label{display:grid;gap:4px;flex:1 1 0;min-width:0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .msort select{text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);font-size:14px}
+  .msort .md{flex:0 0 auto;min-height:44px}
+  .tblwrap{overflow:visible;border:0;border-radius:0}
+  #tMain table{min-width:0;display:block}
+  #tMain thead{display:none}
+  #tMain tbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:10px}
+  #tMain tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;background:var(--surface);border:1px solid var(--grid);border-radius:12px;padding:14px}
+  #tMain td{display:grid;gap:1px;align-content:start;padding:0;border:0;text-align:left;min-width:0;font-size:14px}
+  #tMain td::before{content:attr(data-label);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;line-height:1.25}
+  #tMain td.who{grid-column:1/-1;min-width:0;padding-bottom:8px;border-bottom:1px solid var(--grid)}
+  #tMain td.who::before,#tMain td.empty::before{display:none}
+  #tMain td.who .cn{font-size:15px}
+  #tMain td.st .tag{white-space:normal}
+  #tMain td.empty{grid-column:1/-1}
+  #tMain tbody tr:hover td{background:none}
+  .pager{justify-content:center;text-align:center}
+  .pager .pi{flex:1 1 100%}
+  .pb{flex:1 1 100%}
+  .pb button{flex:1;min-height:44px;font-weight:600}
+}
+
+/* Teléfonos */
+@media (max-width:560px){
+  body{padding-block:16px 32px}
+  .wrap{gap:14px}
+  .head{padding:20px 18px 18px;border-radius:14px}
+  .lede{font-size:13px}
+  .field{flex-basis:100%}
+  .filters .btn{width:100%}
+  select,input[type=search]{font-size:16px;min-height:44px}
+  .rng,.panel{padding:14px}
+  .rtabs{grid-template-columns:1fr 1fr;gap:8px}
+  .rtab{padding:12px}
+  .rtab b{font-size:24px}
+  .rtab span{font-size:12px}
+  .top .kpi .val{font-size:34px}
+  .ph .btn{width:100%}
+}
 </style>
 
 <div class="wrap">
@@ -242,28 +294,37 @@ const COLS = [
 const rowOf = t => ({ t, name:t.name, conn:t.inR?1:0, lvl:t.lvl, ago: t.ago===null ? 1e9 : t.ago,
   reu:t.m[M.reu], org:t.m[M.org], h:hrs(t.m[M.aud]), vid:hrs(t.m[M.vid]), pan:hrs(t.m[M.pan]), msg:t.m[M.chatPr]+t.m[M.chatEq], can:t.m[M.pub]+t.m[M.resp], llam:t.m[M.llam] });
 function makeTable(host, sort, empty){
-  host.innerHTML = `<div class="tblwrap"><table><thead></thead><tbody></tbody></table></div>
-    <div class="pager"><span class="pi"></span><span style="display:flex;gap:6px"><button type="button" class="pp">Anterior</button><button type="button" class="pn">Siguiente</button></span></div>`;
+  host.innerHTML = `<div class="msort"><label>Ordenar por <select class="ms"></select></label><button type="button" class="md btn" aria-label="Cambiar sentido del orden"></button></div>
+    <div class="tblwrap"><table><thead></thead><tbody></tbody></table></div>
+    <div class="pager"><span class="pi"></span><span class="pb"><button type="button" class="pp">Anterior</button><button type="button" class="pn">Siguiente</button></span></div>`;
   const q = s => host.querySelector(s);
   const tb = { rows:[], sort, page:0 };
-  q('.pp').onclick = ()=>{ tb.page--; draw(); };
-  q('.pn').onclick = ()=>{ tb.page++; draw(); };
+  const defDir = k => ['name','ago'].includes(k) ? 1 : -1;
+  q('.pp').onclick = ()=>{ tb.page--; draw(); top(); };
+  q('.pn').onclick = ()=>{ tb.page++; draw(); top(); };
+  // En teléfonos, al cambiar de página se vuelve al inicio de la lista
+  const top = () => { if(matchMedia('(max-width:900px)').matches) host.scrollIntoView({block:'start'}); };
+  q('.ms').innerHTML = COLS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');
+  q('.ms').onchange = e => { const k = e.target.value; tb.sort = [k, defDir(k)]; tb.page=0; draw(); };
+  q('.md').onclick = () => { tb.sort = [tb.sort[0], -tb.sort[1]]; tb.page=0; draw(); };
   function draw(){
     const [sk, sd] = tb.sort, R = tb.rows;
     R.sort((a,b)=>{ const x=a[sk], y=b[sk]; return (typeof x==='string' ? x.localeCompare(y,'es') : (x===y?0:(x<y?-1:1))) * sd || b.h-a.h; });
     q('thead').innerHTML = '<tr>' + COLS.map(([k,l,c])=>`<th class="${c}" aria-sort="${sk===k?(sd>0?'ascending':'descending'):'none'}"><button type="button" data-k="${k}">${esc(l)}${sk===k?`<span class="ar">${sd>0?'▲':'▼'}</span>`:''}</button></th>`).join('') + '</tr>';
-    q('thead').querySelectorAll('button').forEach(b=> b.onclick = ()=>{ const k=b.dataset.k; tb.sort = [k, tb.sort[0]===k ? -tb.sort[1] : (['name','ago'].includes(k)?1:-1)]; tb.page=0; draw(); });
+    q('thead').querySelectorAll('button').forEach(b=> b.onclick = ()=>{ const k=b.dataset.k; tb.sort = [k, tb.sort[0]===k ? -tb.sort[1] : defDir(k)]; tb.page=0; draw(); });
+    q('.ms').value = sk; q('.md').textContent = sd>0 ? '▲ Ascendente' : '▼ Descendente';
     const pages = Math.max(1, Math.ceil(R.length/PAGE)); tb.page = Math.min(Math.max(0,tb.page), pages-1);
     const slice = R.slice(tb.page*PAGE, tb.page*PAGE+PAGE);
+    const L = Object.fromEntries(COLS.map(([k,l])=>[k,esc(l)]));
+    const n = (k, v) => `<td class="r num" data-label="${L[k]}">${v}</td>`;
     q('tbody').innerHTML = slice.length ? slice.map(r=>{ const l = LVk[r.lvl]; return `<tr>
-      <td><div class="cn">${esc(r.name)}</div><div class="cs">${esc(r.t.user)} · ${r.t.facLic?'licencia docente':'licencia estudiante'}</div></td>
-      <td><span class="tag"><i class="sw" style="background:${r.conn?'var(--k0)':'var(--k1)'}"></i>${r.conn?'Usó Teams':'No usó Teams'}</span></td>
-      <td><span class="tag">${swL(l)}${l.name}</span></td>
-      <td>${dt(r.t.last)}${r.t.ago!==null?`<div class="cs">hace ${fmt(r.t.ago)} días</div>`:''}</td>
-      <td class="r num">${fmt(r.reu)}</td><td class="r num">${fmt(r.org)}</td>
-      <td class="r num">${fmt(r.h,1)}</td><td class="r num">${fmt(r.vid,1)}</td><td class="r num">${fmt(r.pan,1)}</td>
-      <td class="r num">${fmt(r.msg)}</td><td class="r num">${fmt(r.can)}</td><td class="r num">${fmt(r.llam)}</td></tr>`; }).join('')
-      : `<tr><td colspan="${COLS.length}" class="hint">${empty}</td></tr>`;
+      <td class="who"><div class="cn">${esc(r.name)}</div><div class="cs">${esc(r.t.user)} · ${r.t.facLic?'licencia docente':'licencia estudiante'}</div></td>
+      <td class="st" data-label="${L.conn}"><span class="tag"><i class="sw" style="background:${r.conn?'var(--k0)':'var(--k1)'}"></i>${r.conn?'Usó Teams':'No usó Teams'}</span></td>
+      <td class="st" data-label="${L.lvl}"><span class="tag">${swL(l)}${l.name}</span></td>
+      <td class="st" data-label="${L.ago}">${dt(r.t.last)}${r.t.ago!==null?`<div class="cs">hace ${fmt(r.t.ago)} días</div>`:''}</td>
+      ${n('reu',fmt(r.reu))}${n('org',fmt(r.org))}${n('h',fmt(r.h,1))}${n('vid',fmt(r.vid,1))}${n('pan',fmt(r.pan,1))}
+      ${n('msg',fmt(r.msg))}${n('can',fmt(r.can))}${n('llam',fmt(r.llam))}</tr>`; }).join('')
+      : `<tr><td colspan="${COLS.length}" class="hint empty">${empty}</td></tr>`;
     q('.pi').textContent = R.length ? `${fmt(tb.page*PAGE+1)}–${fmt(tb.page*PAGE+slice.length)} de ${fmt(R.length)} profesores` : '';
     q('.pp').disabled = tb.page<=0; q('.pn').disabled = tb.page>=pages-1;
   }
@@ -310,7 +371,7 @@ function render(){
   renderKPI(F);
   TM.set(F);
   const si = F.filter(t=>t.inR).length;
-  $('#sDet').textContent = `${fmt(si)} usaron Teams y ${fmt(F.length-si)} no lo usaron ${rangoTxt}. Primero aparecen los que lo usaron. Ordena haciendo clic en los encabezados. Las horas son de audio (tiempo conectado a reuniones y llamadas).`;
+  $('#sDet').textContent = `${fmt(si)} usaron Teams y ${fmt(F.length-si)} no lo usaron ${rangoTxt}. Primero aparecen los que lo usaron; puedes cambiar el orden. Las horas son de audio (tiempo conectado a reuniones y llamadas).`;
 }
 render();
 </script>
