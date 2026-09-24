@@ -340,7 +340,7 @@ function makeTable(host, sort, empty){
       <td class="who"><div class="cn">${esc(r.name)}</div><div class="cs">${esc(r.t.user)} · ${r.t.facLic?'licencia docente':'licencia estudiante'}</div></td>
       <td class="st" data-label="${L.conn}"><span class="tag"><i class="sw" style="background:${r.conn?'var(--k0)':'var(--k1)'}"></i>${r.conn?'Usó Teams':'No usó Teams'}</span></td>
       <td class="st" data-label="${L.lvl}"><span class="tag">${swL(l)}${l.name}</span></td>
-      <td class="st" data-label="${L.ago}">${dt(r.t.last)}${r.t.ago!==null?`<div class="cs">hace ${fmt(r.t.ago)} días</div>`:''}</td>
+      <td class="st" data-label="${L.ago}">${dt(r.t.last)}</td>
       <td class="acc">${esc(ACC)}</td>
       ${n('reu',fmt(r.reu))}${n('org',fmt(r.org))}${n('h',fmt(r.h,1))}${n('vid',fmt(r.vid,1))}${n('pan',fmt(r.pan,1))}
       ${n('msg',fmt(r.msg))}${n('can',fmt(r.can))}${n('llam',fmt(r.llam))}</tr>`; }).join('')
