@@ -98,6 +98,12 @@ select:disabled{opacity:.55}
 .tblwrap{overflow-x:auto;border:1px solid var(--grid);border-radius:10px}
 table{border-collapse:collapse;width:100%;min-width:1000px;font-size:13px}
 th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+#tMain thead tr.grow th{position:static;text-align:center;font-size:10.5px;letter-spacing:.05em;padding:6px 10px;border-bottom:0}
+#tMain th.g0{background:var(--surface)}
+#tMain th.gh{background:var(--brand);color:#fff;border-radius:8px 8px 0 0}
+#tMain td.acc{display:none}
+.accnote{margin:0;font-size:12.5px;color:var(--ink-2);background:var(--brand-50);border-left:4px solid var(--brand);border-radius:6px;padding:8px 12px}
+.accnote b{color:var(--brand-900)}
 th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--brand-700);font-weight:700;background:var(--brand-50);position:sticky;top:0}
 th button{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
 th button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -143,7 +149,8 @@ tbody tr:hover td{background:var(--brand-50)}
   #tMain td{display:grid;gap:1px;align-content:start;padding:0;border:0;text-align:left;min-width:0;font-size:14px}
   #tMain td::before{content:attr(data-label);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;line-height:1.25}
   #tMain td.who{grid-column:1/-1;min-width:0;padding-bottom:8px;border-bottom:1px solid var(--grid)}
-  #tMain td.who::before,#tMain td.empty::before{display:none}
+  #tMain td.who::before,#tMain td.empty::before,#tMain td.acc::before{display:none}
+  #tMain td.acc{display:block;grid-column:1/-1;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--brand-700);background:var(--brand-50);border-radius:6px;padding:5px 8px;margin-top:2px}
   #tMain td.who .cn{font-size:15px}
   #tMain td.st .tag{white-space:normal}
   #tMain td.empty{grid-column:1/-1}
@@ -209,6 +216,7 @@ tbody tr:hover td{background:var(--brand-50)}
       <div><h2>Detalle por profesor</h2><p id="sDet"></p></div>
       <button type="button" class="btn" id="csv">Descargar CSV</button>
     </div>
+    <p class="accnote" id="sAcc"></p>
     <div id="tMain"></div>
   </section>
 
@@ -255,6 +263,8 @@ const inR = t => !!t.last && t.last >= D.r0 && t.last <= D.r1;
 T.forEach(t => t.inR = inR(t));
 const RNG = { si:{c:'var(--k0)', lab:'Se conectaron'}, no:{c:'var(--k1)', lab:'No se conectaron'}, '':{c:'var(--line)', lab:'Todos los profesores'} };
 const rangoTxt = `del ${dt(D.r0).replace(/ \d{4}$/,'')} al ${dt(D.r1)}`;
+// Periodo que acumulan reuniones, horas, mensajes y llamadas
+const ACC = `Acumulado de ${D.days} días · ${dt(D.ini)} al ${dt(D.ref)}`;
 const S = { rng:'', lvl:'', q:'' };
 
 // Filtros
@@ -318,7 +328,8 @@ function makeTable(host, sort, empty){
   function draw(){
     const [sk, sd] = tb.sort, R = tb.rows;
     R.sort((a,b)=>{ const x=a[sk], y=b[sk]; return (typeof x==='string' ? x.localeCompare(y,'es') : (x===y?0:(x<y?-1:1))) * sd || b.h-a.h; });
-    q('thead').innerHTML = '<tr>' + COLS.map(([k,l,c])=>`<th class="${c}" aria-sort="${sk===k?(sd>0?'ascending':'descending'):'none'}"><button type="button" data-k="${k}">${esc(l)}${sk===k?`<span class="ar">${sd>0?'▲':'▼'}</span>`:''}</button></th>`).join('') + '</tr>';
+    const nMet = COLS.length - 4;
+    q('thead').innerHTML = `<tr class="grow"><th colspan="4" class="g0"></th><th colspan="${nMet}" class="gh">${esc(ACC)}</th></tr>` + '<tr>' + COLS.map(([k,l,c])=>`<th class="${c}" aria-sort="${sk===k?(sd>0?'ascending':'descending'):'none'}"><button type="button" data-k="${k}">${esc(l)}${sk===k?`<span class="ar">${sd>0?'▲':'▼'}</span>`:''}</button></th>`).join('') + '</tr>';
     q('thead').querySelectorAll('button').forEach(b=> b.onclick = ()=>{ const k=b.dataset.k; tb.sort = [k, tb.sort[0]===k ? -tb.sort[1] : defDir(k)]; tb.page=0; draw(); });
     q('.ms').value = sk; q('.md').textContent = sd>0 ? '▲ Ascendente' : '▼ Descendente';
     const pages = Math.max(1, Math.ceil(R.length/PAGE)); tb.page = Math.min(Math.max(0,tb.page), pages-1);
@@ -330,6 +341,7 @@ function makeTable(host, sort, empty){
       <td class="st" data-label="${L.conn}"><span class="tag"><i class="sw" style="background:${r.conn?'var(--k0)':'var(--k1)'}"></i>${r.conn?'Usó Teams':'No usó Teams'}</span></td>
       <td class="st" data-label="${L.lvl}"><span class="tag">${swL(l)}${l.name}</span></td>
       <td class="st" data-label="${L.ago}">${dt(r.t.last)}${r.t.ago!==null?`<div class="cs">hace ${fmt(r.t.ago)} días</div>`:''}</td>
+      <td class="acc">${esc(ACC)}</td>
       ${n('reu',fmt(r.reu))}${n('org',fmt(r.org))}${n('h',fmt(r.h,1))}${n('vid',fmt(r.vid,1))}${n('pan',fmt(r.pan,1))}
       ${n('msg',fmt(r.msg))}${n('can',fmt(r.can))}${n('llam',fmt(r.llam))}</tr>`; }).join('')
       : `<tr><td colspan="${COLS.length}" class="hint empty">${empty}</td></tr>`;
@@ -342,7 +354,7 @@ function makeTable(host, sort, empty){
 function downloadCSV(rows, name){
   const q = v => `"${String(v).replace(/"/g,'""')}"`;
   const h2 = s => hrs(s).toFixed(2).replace('.',',');
-  const head = ['Nombre completo','Usuario',`Se conectó ${rangoTxt}`,'Licencia','Nivel de uso','Última actividad','Días desde la última actividad','Reuniones (participó)','Reuniones organizadas','Reuniones asistidas','Reuniones programadas organizadas','Reuniones periódicas organizadas','Reuniones improvisadas organizadas','Horas conectado (audio)','Horas cámara (video)','Horas pantalla compartida','Mensajes chat privado','Mensajes chat de equipos','Publicaciones en canales','Respuestas en canales','Llamadas'];
+  const head = ['Nombre completo','Usuario',`Se conectó ${rangoTxt}`,'Licencia','Nivel de uso','Última actividad','Días desde la última actividad',`Reuniones (participó) - acumulado ${D.days} días`,`Reuniones organizadas - acumulado ${D.days} días`,`Reuniones asistidas - acumulado ${D.days} días`,`Reuniones programadas organizadas - acumulado ${D.days} días`,`Reuniones periódicas organizadas - acumulado ${D.days} días`,`Reuniones improvisadas organizadas - acumulado ${D.days} días`,`Horas conectado (audio) - acumulado ${D.days} días`,`Horas cámara (video) - acumulado ${D.days} días`,`Horas pantalla compartida - acumulado ${D.days} días`,`Mensajes chat privado - acumulado ${D.days} días`,`Mensajes chat de equipos - acumulado ${D.days} días`,`Publicaciones en canales - acumulado ${D.days} días`,`Respuestas en canales - acumulado ${D.days} días`,`Llamadas - acumulado ${D.days} días`];
   const lines = rows.map(({t})=>{ const m=t.m; return [t.name, t.user, t.inR?'Sí':'No', LIC[t.facLic], LVk[t.lvl].name, t.last, t.ago ?? '', m[M.reu], m[M.org], m[M.asi], m[M.uniO], m[M.perO], m[M.impO],
     h2(m[M.aud]), h2(m[M.vid]), h2(m[M.pan]), m[M.chatPr], m[M.chatEq], m[M.pub], m[M.resp], m[M.llam]].map(q).join(';'); });
   const blob = new Blob(['\ufeff'+[head.map(q).join(';'), ...lines].join('\r\n')], {type:'text/csv;charset=utf-8'});
@@ -379,7 +391,8 @@ function render(){
   renderKPI(F);
   TM.set(F);
   const si = F.filter(t=>t.inR).length;
-  $('#sDet').textContent = `${fmt(si)} usaron Teams y ${fmt(F.length-si)} no lo usaron ${rangoTxt}. Primero aparecen los que lo usaron; puedes cambiar el orden. Las horas son de audio (tiempo conectado a reuniones y llamadas).`;
+  $('#sDet').textContent = `${fmt(si)} usaron Teams y ${fmt(F.length-si)} no lo usaron ${rangoTxt}. Primero aparecen los que lo usaron; puedes cambiar el orden.`;
+  $('#sAcc').innerHTML = `<b>Reuniones, horas, mensajes, canales y llamadas son el acumulado de ${D.days} días</b> (${dt(D.ini)} al ${dt(D.ref)}), no solo del ${rangoTxt.replace(/^del /,'')}. Las horas conectado son el tiempo con audio en reuniones y llamadas.`;
 }
 render();
 </script>
