@@ -1,0 +1,6 @@
+# Datos crudos (informe de Microsoft 365 y nombres de profesores): no se versionan
+*.csv
+*.xlsx
+*.xls
+~$*
+__pycache__/
